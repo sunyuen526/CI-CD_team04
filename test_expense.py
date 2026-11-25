@@ -99,7 +99,18 @@ class MonthlyTotalsTests(unittest.TestCase):
 
     def test_empty(self):
         self.assertEqual(et.monthly_totals([]), {})
+from expense_input import check_budget
 
+
+class CheckBudgetTests(unittest.TestCase):
+    def test_status(self):
+        self.assertEqual(check_budget(500, 1000), "ok")
+        self.assertEqual(check_budget(800, 1000), "warning")
+        self.assertEqual(check_budget(1200, 1000), "over")
+
+    def test_invalid_budget(self):
+        with self.assertRaises(ValueError):
+            check_budget(100, 0)
 
 if __name__ == "__main__":
     unittest.main()

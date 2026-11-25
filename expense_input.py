@@ -82,6 +82,14 @@ def main():
         print("  Saved.")
     print(f"Total records: {len(load_expenses())}")
 
-
+def check_budget(total, budget):
+    """回傳預算狀態：ok / warning（用掉 80% 以上）/ over（超支）"""
+    if budget <= 0:
+        raise ValueError("預算必須大於 0")
+    if total > budget:
+        return "over"
+    if total >= budget * 0.8:
+        return "warning"
+    return "ok"
 if __name__ == "__main__":
     sys.exit(main())
