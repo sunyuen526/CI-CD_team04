@@ -74,3 +74,7 @@ python expense_chart.py sample_expenses.csv    # 使用內建範例資料測試�
 ## 系統操作展示影片
 
 https://youtu.be/aygy1tZ6S7E?si=ssbAW9agvJ2NuKmS
+
+
+77777777777777777777777777777777777777777
+66666666666666666666666666666666666666666
