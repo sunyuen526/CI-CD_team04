@@ -5,7 +5,8 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: write
+  contents: write   # 建立 Release
+  checks: read      # 查詢 CI / UI 檢查結果
 
 jobs:
   build-and-release:
@@ -13,19 +14,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 1. 取得最新 main 分支程式碼
+      # CI、UI、CD 三條會在合併後同時開始跑，所以 CD 先等兩個必要檢查都通過才發布，
+      # 讓 Release 說明寫的「已通過檢查」是真的被保證的
+      - name: 1. 等待 CI 單元測試與 UI 檢查都通過
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          REQUIRED=("CI - Lint & Automated Tests" "UI - App Launch & Screenshot Check")
+          # 每 20 秒查一次，最多等 15 分鐘
+          for i in $(seq 1 45); do
+            runs=$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100")
+            all_ok=true
+            for name in "${REQUIRED[@]}"; do
+              state=$(jq -r --arg n "$name" \
+                '[.check_runs[] | select(.name == $n)] | sort_by(.started_at) | last | "\(.status) \(.conclusion)"' \
+                <<< "$runs")
+              echo "[第 $i 次] $name: $state"
+              case "$state" in
+                "completed success") ;;
+                completed*) echo "::error::必要檢查「$name」沒有通過（$state），取消發布"; exit 1 ;;
+                *) all_ok=false ;;
+              esac
+            done
+            if $all_ok; then
+              echo "兩個必要檢查都已通過，開始打包發布"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::等了 15 分鐘檢查仍未完成（自架 Runner 可能離線），取消發布"
+          exit 1
+
+      - name: 2. 取得最新 main 分支程式碼
         uses: actions/checkout@v4
 
-      - name: 2. 打包記帳系統正式版壓縮檔
+      - name: 3. 打包記帳系統正式版壓縮檔
         run: |
           mkdir -p dist
           cp *.py requirements.txt README.md dist/
           zip -r expense-tracker-release.zip dist/
 
-      - name: 3. 自動發布為 GitHub Release 正式版本
+      - name: 4. 自動發布為 GitHub Release 正式版本
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Release v1.0.${{ github.run_number }}
-          body: "此版本已通過 CI 單元測試與 UI 網頁渲染檢查，由 CD Pipeline 自動打包發布。"
+          body: |
+            此版本的 commit 已通過 CI 單元測試（`CI - Lint & Automated Tests`）與 UI 網頁渲染檢查（`UI - App Launch & Screenshot Check`），由 CD Pipeline 自動打包發布。
+            觸發 commit：${{ github.sha }}
+          generate_release_notes: true
           files: expense-tracker-release.zip

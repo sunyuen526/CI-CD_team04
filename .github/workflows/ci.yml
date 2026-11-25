@@ -9,34 +9,52 @@ on:
 permissions:
   contents: read
 
+# 同一個 PR 有新的 push 時，取消還在跑的舊檢查，避免唯一的自架 Runner 排隊塞車
+# （main 上的執行不取消，CD 需要每個 commit 的檢查結果）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint-and-test:
     # 名稱不可更改：main 的 ruleset 要求的檢查名稱就是這個
     name: CI - Lint & Automated Tests
-    # 改由組員自架的 Windows Runner 執行（C:\actions-runner\actions-runner\run.cmd 需保持開啟）
+    # 由組員自架的 Windows Runner 執行
     runs-on: [self-hosted, Windows, X64]
 
     steps:
       - name: 1. 檢出程式碼 (Checkout)
         uses: actions/checkout@v4
 
-      # 自架 Runner 直接使用本機已安裝的 Python（3.12），不透過 setup-python 下載安裝
-      - name: 2. 確認本機 Python 執行環境
+      # 每次建立全新的虛擬環境：只裝 requirements.txt 列出的套件，
+      # 這樣漏寫套件時 CI 會失敗，也不會污染本機的全域 Python
+      # （venv 建在 Runner 的暫存資料夾 RUNNER_TEMP，不會被 flake8 / pytest 掃到）
+      - name: 2. 建立乾淨的 Python 虛擬環境
         run: |
+          $venv = Join-Path $env:RUNNER_TEMP "ci-venv"
+          if (Test-Path $venv) { Remove-Item -Recurse -Force $venv }
           python --version
-          python -c "import sys; print(sys.executable)"
+          python -m venv $venv
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: 3. 安裝專案相依套件
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          $py = Join-Path $env:RUNNER_TEMP "ci-venv\Scripts\python.exe"
+          & $py -m pip install --upgrade pip
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & $py -m pip install -r requirements.txt
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: 4. 靜態程式碼檢查 (Flake8 Linter)
         run: |
-          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          $py = Join-Path $env:RUNNER_TEMP "ci-venv\Scripts\python.exe"
+          & $py -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: 5. 執行 Pytest 自動化測試
         env:
           MPLBACKEND: Agg
         run: |
-          python -m pytest -v
+          $py = Join-Path $env:RUNNER_TEMP "ci-venv\Scripts\python.exe"
+          & $py -m pytest -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
