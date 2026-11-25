@@ -325,7 +325,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path not in ("/add", "/delete"):
             return self._send("not found", "text/plain", 404)
         form = parse_qs(self.rfile.read(int(self.headers.get("Content-Length", 0))).decode())
-        get = lambda k: form.get(k, [""])[0].strip()
+
+        def get(k):
+            return form.get(k, [""])[0].strip()
+
         if self.path == "/delete":
             try:
                 delete_expense(int(get("index")))

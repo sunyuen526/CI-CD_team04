@@ -5,6 +5,7 @@ import unittest
 
 import expense_input as ei
 import expense_trend as et
+from expense_input import check_budget
 
 
 class ParseAmountTests(unittest.TestCase):
@@ -99,7 +100,6 @@ class MonthlyTotalsTests(unittest.TestCase):
 
     def test_empty(self):
         self.assertEqual(et.monthly_totals([]), {})
-from expense_input import check_budget
 
 
 class CheckBudgetTests(unittest.TestCase):
@@ -111,6 +111,7 @@ class CheckBudgetTests(unittest.TestCase):
     def test_invalid_budget(self):
         with self.assertRaises(ValueError):
             check_budget(100, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

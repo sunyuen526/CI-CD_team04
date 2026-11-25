@@ -5,9 +5,9 @@ from collections import defaultdict
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402  必須在 matplotlib.use("Agg") 之後匯入
 
-from expense_input import DATA_FILE, load_expenses
+from expense_input import DATA_FILE, load_expenses  # noqa: E402
 
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = ["Microsoft JhengHei", "Microsoft YaHei", "PingFang TC", "Heiti TC",
