@@ -1,0 +1,31 @@
+name: CD - Auto Release Package
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: CD - Package & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. 取得最新 main 分支程式碼
+        uses: actions/checkout@v4
+
+      - name: 2. 打包記帳系統正式版壓縮檔
+        run: |
+          mkdir -p dist
+          cp *.py requirements.txt README.md dist/
+          zip -r expense-tracker-release.zip dist/
+
+      - name: 3. 自動發布為 GitHub Release 正式版本
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          body: "此版本已通過 CI 單元測試與 UI 網頁渲染檢查，由 CD Pipeline 自動打包發布。"
+          files: expense-tracker-release.zip

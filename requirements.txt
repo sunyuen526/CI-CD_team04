@@ -1,1 +1,5 @@
-﻿matplotlib
+flask
+matplotlib
+pytest
+flake8
+playwright

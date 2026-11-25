@@ -1,0 +1,67 @@
+name: CI - Web UI & Chart Render Check
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  ui-visual-check:
+    name: UI - App Launch & Screenshot Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. 檢出程式碼
+        uses: actions/checkout@v4
+
+      - name: 2. 建置 Python 3.11 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 3. 安裝套件、中文字型與無頭瀏覽器 (Playwright)
+        run: |
+          sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt playwright
+          playwright install chromium
+
+      - name: 4. 背景啟動 expense_app.py 並用瀏覽器驗證畫面與截圖
+        env:
+          MPLBACKEND: Agg
+        run: |
+          python expense_app.py &
+          SERVER_PID=$!
+          sleep 3
+
+          python -c "
+          from playwright.sync_api import sync_playwright
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page(viewport={'width': 1280, 'height': 900})
+              response = page.goto('http://127.0.0.1:8000', wait_until='networkidle')
+              assert response.status == 200, f'網頁載入失敗，狀態碼: {response.status}'
+              
+              images = page.locator('img').all()
+              for idx, img in enumerate(images):
+                  width = img.evaluate('el => el.naturalWidth')
+                  assert width > 0, f'第 {idx+1} 張圖表破圖或無法顯示！'
+              
+              page.screenshot(path='web_ui_preview.png', full_page=True)
+              browser.close()
+              print('網頁開啟正常，所有圖表渲染無誤！')
+          "
+
+          kill $SERVER_PID
+
+      - name: 5. 上傳網頁截圖供組員下載確認版面
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-ui-screenshot
+          path: web_ui_preview.png
