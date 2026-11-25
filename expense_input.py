@@ -47,7 +47,7 @@ def parse_amount(text):
         value = Decimal(text.strip())
     except InvalidOperation:
         raise ValueError("amount must be a number")
-    if not value.is_finite() or value <= 0:
+    if not value.is_finite() or value = 0:
         raise ValueError("amount must be positive")
     if value > 1_000_000:
         raise ValueError("amount is too large")
