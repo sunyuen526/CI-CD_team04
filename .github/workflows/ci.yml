@@ -11,29 +11,32 @@ permissions:
 
 jobs:
   lint-and-test:
+    # 名稱不可更改：main 的 ruleset 要求的檢查名稱就是這個
     name: CI - Lint & Automated Tests
-    runs-on: ubuntu-latest
+    # 改由組員自架的 Windows Runner 執行（C:\actions-runner\actions-runner\run.cmd 需保持開啟）
+    runs-on: [self-hosted, Windows, X64]
 
     steps:
       - name: 1. 檢出程式碼 (Checkout)
         uses: actions/checkout@v4
 
-      - name: 2. 建置 Python 3.11 執行環境
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      # 自架 Runner 直接使用本機已安裝的 Python（3.12），不透過 setup-python 下載安裝
+      - name: 2. 確認本機 Python 執行環境
+        run: |
+          python --version
+          python -c "import sys; print(sys.executable)"
 
       - name: 3. 安裝專案相依套件
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
 
       - name: 4. 靜態程式碼檢查 (Flake8 Linter)
         run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: 5. 執行 Pytest 自動化測試
         env:
           MPLBACKEND: Agg
         run: |
-          pytest -v
+          python -m pytest -v
